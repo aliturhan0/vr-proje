@@ -1,87 +1,74 @@
 ﻿using UnityEngine;
 using TMPro;
-using System.Collections;
 
 public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance;
 
-    [Header("Score Settings")]
     public int score = 0;
     public int scorePerObject = 100;
     public int totalObjects = 5;
+
     private int placedCount = 0;
+    private int record;
 
     [Header("UI")]
     public TextMeshProUGUI scoreText;
-    public TextMeshProUGUI floatingScoreText;
-    public float floatDuration = 0.6f;
+    public TextMeshProUGUI recordText;
 
     private void Awake()
     {
-        if (Instance == null)
-            Instance = this;
-        else
-            Destroy(gameObject);
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
     private void Start()
     {
-        UpdateScoreText();
-
-        if (floatingScoreText != null)
-            floatingScoreText.gameObject.SetActive(false);
+        // OYUN BAŞINDA REKORU OKU
+        record = PlayerPrefs.GetInt("RECORD", 0);
+        UpdateUI();
     }
 
-    // 🔥 DropZone çağırır
-    public void AddScoreWithEffect()
+    public void AddScore()
     {
+        score += scorePerObject;
         placedCount++;
-        StartCoroutine(FloatingScoreRoutine());
 
-        // ✅ TÜM OBJELER YERLEŞTİ → OYUN BİTSİN
+        CheckRecord();   // 🔥 ANINDA REKOR KONTROL
+        UpdateUI();
+
         if (placedCount >= totalObjects)
         {
-            if (TimerManager.Instance != null)
-                TimerManager.Instance.ForceEndGame();
+            TimerManager tm = FindObjectOfType<TimerManager>();
+            if (tm != null)
+                tm.WinGame();
         }
     }
 
-    // ⏱ Timer kalan süreyi buradan ekler
     public void AddRemainingTime(int seconds)
     {
         score += seconds;
-        UpdateScoreText();
+
+        CheckRecord();   // 🔥 KALAN SÜRE DE REKORA DAHİL
+        UpdateUI();
     }
 
-    private IEnumerator FloatingScoreRoutine()
+    private void CheckRecord()
     {
-        floatingScoreText.gameObject.SetActive(true);
-        floatingScoreText.text = "+" + scorePerObject;
-
-        RectTransform floatRT = floatingScoreText.rectTransform;
-        RectTransform scoreRT = scoreText.rectTransform;
-
-        Vector3 startPos = floatRT.position;
-        Vector3 endPos = scoreRT.position;
-
-        float t = 0f;
-        while (t < 1f)
+        if (score > record)
         {
-            t += Time.deltaTime / floatDuration;
-            floatRT.position = Vector3.Lerp(startPos, endPos, t);
-            yield return null;
+            record = score;
+            PlayerPrefs.SetInt("RECORD", record);
+            PlayerPrefs.Save();
         }
-
-        score += scorePerObject;
-        UpdateScoreText();
-
-        floatRT.position = startPos;
-        floatingScoreText.gameObject.SetActive(false);
     }
 
-    private void UpdateScoreText()
+    private void UpdateUI()
     {
-        scoreText.text = "SKOR: " + score;
+        if (scoreText != null)
+            scoreText.text = "SKOR: " + score;
+
+        if (recordText != null)
+            recordText.text = "REKOR: " + record;
     }
 }
